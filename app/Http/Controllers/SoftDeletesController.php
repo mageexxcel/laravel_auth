@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Auth;
+use DB;
 use Illuminate\Http\Request;
 use jeremykenedy\LaravelRoles\Models\Role;
 
@@ -28,12 +29,22 @@ class SoftDeletesController extends Controller
      */
     public static function getDeletedUser($id)
     {
+        $error = 0;
         $user = User::onlyTrashed()->where('id', $id)->get();
         if (count($user) != 1) {
-            return redirect('/users/deleted/')->with('error', trans('usersmanagement.errorUserNotFound'));
+            $error = 1;
+            $data = [
+                'error' => $error,
+                'message' => trans('usersmanagement.errorUserNotFound')
+            ];
+            return response()->json($data);
         }
 
-        return $user[0];
+        $data = [
+            'error' => $error,
+            'data' => $user
+        ];
+        return response()->json($data);
     }
 
     /**
@@ -45,8 +56,21 @@ class SoftDeletesController extends Controller
     {
         $users = User::onlyTrashed()->get();
         $roles = Role::all();
+        $users_roles = DB::table('role_user')->get();
 
-        return View('usersmanagement.show-deleted-users', compact('users', 'roles'));
+        foreach($users_roles as $user_role){
+            foreach($users as $key => $user){
+                if( $user['id'] ==  $user_role->user_id ){
+                    foreach( $roles as $role ){
+                        if( $role->id == $user_role->role_id ){
+                            $users[$key]['role'] = $role->name;
+                        }
+                    }
+                }
+            }
+        }
+
+        return response()->json($users);
     }
 
     /**
@@ -60,7 +84,7 @@ class SoftDeletesController extends Controller
     {
         $user = self::getDeletedUser($id);
 
-        return view('usersmanagement.show-deleted-user')->withUser($user);
+        return response()->json($user);
     }
 
     /**
@@ -73,10 +97,16 @@ class SoftDeletesController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $error = 0;
         $user = self::getDeletedUser($id);
         $user->restore();
+        $data = [
+            'error' => $error,
+            'message' => trans('usersmanagement.successRestore'),
+            'data' => $user
+        ];
 
-        return redirect('/users/')->with('success', trans('usersmanagement.successRestore'));
+        return response()->json($data);
     }
 
     /**
@@ -88,9 +118,15 @@ class SoftDeletesController extends Controller
      */
     public function destroy($id)
     {
+        $error = 0;
         $user = self::getDeletedUser($id);
         $user->forceDelete();
+        $data = [
+            'error' => $error,
+            'message' => trans('usersmanagement.successDestroy'),
+            'data' => $user
+        ];
 
-        return redirect('/users/deleted/')->with('success', trans('usersmanagement.successDestroy'));
+        return response()->json($data);
     }
 }

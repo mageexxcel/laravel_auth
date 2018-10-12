@@ -87,7 +87,7 @@ class ProfilesController extends Controller
             'currentTheme' => $currentTheme,
         ];
 
-        return view('profiles.show')->with($data);
+        return response()->json($data);
     }
 
     /**
@@ -120,7 +120,7 @@ class ProfilesController extends Controller
 
         ];
 
-        return view('profiles.edit')->with($data);
+        return response()->json($data);
     }
 
     /**
@@ -157,8 +157,13 @@ class ProfilesController extends Controller
         $user->updated_ip_address = $ipAddress->getClientIp();
 
         $user->save();
-
-        return redirect('profile/'.$user->name.'/edit')->with('success', trans('profile.updateSuccess'));
+        $error = 0;
+        $data = [
+            'error' => $error,
+            'message' => trans('profile.updateSuccess'),
+            'data' => $user
+        ];
+        return response()->json($data); 
     }
 
     /**
@@ -218,8 +223,13 @@ class ProfilesController extends Controller
         $user->updated_ip_address = $ipAddress->getClientIp();
 
         $user->save();
-
-        return redirect('profile/'.$user->name.'/edit')->with('success', trans('profile.updateAccountSuccess'));
+        $error = 0;
+        $data = [
+            'error' => $error,
+            'message' => trans('profile.updateAccountSuccess'),
+            'data' => $user
+        ];
+        return response()->json($user);
     }
 
     /**
@@ -259,8 +269,12 @@ class ProfilesController extends Controller
         $user->updated_ip_address = $ipAddress->getClientIp();
 
         $user->save();
-
-        return redirect('profile/'.$user->name.'/edit')->with('success', trans('profile.updatePWSuccess'));
+        $error = 0;
+        $data = [
+            'error' => $error,
+            'message' => trans('profile.updatePWSuccess')
+        ];
+        return response()->json($data);
     }
 
     /**
@@ -319,6 +333,7 @@ class ProfilesController extends Controller
      */
     public function deleteUserAccount(Request $request, $id)
     {
+        $error = 0;
         $currentUser = \Auth::user();
         $user = User::findOrFail($id);
         $ipAddress = new CaptureIpTrait();
@@ -357,7 +372,7 @@ class ProfilesController extends Controller
         $user->save();
 
         // Send Goodbye email notification
-        $this->sendGoodbyEmail($user, $user->token);
+        // $this->sendGoodbyEmail($user, $user->token);
 
         // Soft Delete User
         $user->delete();
@@ -365,8 +380,12 @@ class ProfilesController extends Controller
         // Clear out the session
         $request->session()->flush();
         $request->session()->regenerate();
-
-        return redirect('/login/')->with('success', trans('profile.successUserAccountDeleted'));
+        
+        $data = [
+            'error' => $error,
+            'message' => trans('profile.successUserAccountDeleted')
+        ];
+        return response()->json($data);
     }
 
     /**
