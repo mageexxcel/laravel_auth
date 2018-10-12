@@ -47,11 +47,15 @@ class LoginController extends Controller
      */
     public function logout()
     {
+        $error = 0;
         $user = Auth::user();
         Log::info('User Logged Out. ', [$user]);
         Auth::logout();
         Session::flush();
-
-        return redirect(property_exists($this, 'redirectAfterLogout') ? $this->redirectAfterLogout : '/');
+        $data = [
+            'error' => $error,
+            'message' => 'User Logged Out'
+        ];
+        return response()->json($data);
     }
 }

@@ -28,11 +28,16 @@ class ThemesManagementController extends Controller
      */
     public function index()
     {
+        $error = 0;
         $users = User::all();
 
-        $themes = Theme::orderBy('name', 'asc')->get();
+        $themes = Theme::orderBy('name', 'asc')->get();        
+        $data = [
+            'error' => $error,
+            'data' => $themes
+        ];
 
-        return View('themesmanagement.show-themes', compact('themes', 'users'));
+        return response()->json($data);
     }
 
     /**
@@ -59,7 +64,7 @@ class ThemesManagementController extends Controller
         $validator = Validator::make($input, Theme::rules());
 
         if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
+            return $validator->messages();
         }
 
         $theme = Theme::create([
@@ -72,9 +77,14 @@ class ThemesManagementController extends Controller
         ]);
 
         $theme->taggable_id = $theme->id;
-        $theme->save();
-
-        return redirect('themes/'.$theme->id)->with('success', trans('themes.createSuccess'));
+        $theme->save();        
+        $data = [
+            'error' => $error,
+            'message' => trans('themes.createSuccess'),
+            'data' => $theme
+        ];
+        
+        return response()->json($data);
     }
 
     /**
@@ -101,7 +111,7 @@ class ThemesManagementController extends Controller
             'themeUsers' => $themeUsers,
         ];
 
-        return view('themesmanagement.show-theme')->with($data);
+        return response()->json($data);
     }
 
     /**
@@ -128,7 +138,7 @@ class ThemesManagementController extends Controller
             'themeUsers' => $themeUsers,
         ];
 
-        return view('themesmanagement.edit-theme')->with($data);
+        return response()->json($data);
     }
 
     /**
@@ -141,6 +151,7 @@ class ThemesManagementController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $error = 0;
         $theme = Theme::find($id);
 
         $input = Input::only('name', 'link', 'notes', 'status');
@@ -148,12 +159,17 @@ class ThemesManagementController extends Controller
         $validator = Validator::make($input, Theme::rules($id));
 
         if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
+            return $validator->messages();
         }
 
         $theme->fill($input)->save();
+        $data = [
+            'error' => $error,
+            'message' => trans('themes.updateSuccess'),
+            'data' => $theme
+        ];
 
-        return redirect('themes/'.$theme->id)->with('success', trans('themes.updateSuccess'));
+        return response()->json($data);
     }
 
     /**
@@ -167,13 +183,18 @@ class ThemesManagementController extends Controller
     {
         $default = Theme::findOrFail(1);
         $theme = Theme::findOrFail($id);
-
+        $error = 1;
+        $message = trans('themes.deleteSelfError');
         if ($theme->id != $default->id) {
             $theme->delete();
-
-            return redirect('themes')->with('success', trans('themes.deleteSuccess'));
+            $error = 0;
+            $message = trans('themes.deleteSuccess');
         }
+        $data = [
+            'error' => $error,
+            'message' => $message
+        ];
 
-        return back()->with('error', trans('themes.deleteSelfError'));
+        return response()->json($data);
     }
 }

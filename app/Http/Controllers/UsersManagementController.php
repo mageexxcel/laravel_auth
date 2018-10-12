@@ -6,6 +6,7 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Traits\CaptureIpTrait;
 use Auth;
+use DB;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use jeremykenedy\LaravelRoles\Models\Role;
@@ -38,7 +39,22 @@ class UsersManagementController extends Controller
         }
         $roles = Role::all();
 
-        return View('usersmanagement.show-users', compact('users', 'roles'));
+        $getUsers = json_decode( json_encode($users), true );
+        $users_roles = DB::table('role_user')->get();
+        
+        foreach($users_roles as $user_role){
+            foreach($getUsers['data'] as $key => $user){
+                if( $user['id'] ==  $user_role->user_id ){
+                    foreach( $roles as $role ){
+                        if( $role->id == $user_role->role_id ){
+                            $getUsers['data'][$key]['role'] = $role->name;
+                        }
+                    }
+                }
+            }
+        }
+
+        return response()->json($getUsers);
     }
 
     /**
@@ -66,6 +82,7 @@ class UsersManagementController extends Controller
      */
     public function store(Request $request)
     {
+        $error = 0;
         $validator = Validator::make($request->all(),
             [
                 'name'                  => 'required|max:255|unique:users',
@@ -91,7 +108,7 @@ class UsersManagementController extends Controller
         );
 
         if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
+            return $validator->messages();
         }
 
         $ipAddress = new CaptureIpTrait();
@@ -111,8 +128,14 @@ class UsersManagementController extends Controller
         $user->profile()->save($profile);
         $user->attachRole($request->input('role'));
         $user->save();
+        
+        $data = [
+            'error' => $error,
+            'message' => trans('usersmanagement.createSuccess'),
+            'data' => $user
+        ];
 
-        return redirect('users')->with('success', trans('usersmanagement.createSuccess'));
+        return response()->json($data);
     }
 
     /**
@@ -126,7 +149,7 @@ class UsersManagementController extends Controller
     {
         $user = User::find($id);
 
-        return view('usersmanagement.show-user')->withUser($user);
+        return response()->json($user);
     }
 
     /**
@@ -151,7 +174,7 @@ class UsersManagementController extends Controller
             'currentRole' => $currentRole,
         ];
 
-        return view('usersmanagement.edit-user')->with($data);
+        return response()->json($data);
     }
 
     /**
@@ -164,6 +187,7 @@ class UsersManagementController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $error = 0;
         $currentUser = Auth::user();
         $user = User::find($id);
         $emailCheck = ($request->input('email') != '') && ($request->input('email') != $user->email);
@@ -183,7 +207,7 @@ class UsersManagementController extends Controller
         }
 
         if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
+            return $validator->messages();
         }
 
         $user->name = $request->input('name');
@@ -217,8 +241,14 @@ class UsersManagementController extends Controller
         }
 
         $user->save();
+        
+        $data = [
+            'error' => $error,
+            'message' => trans('usersmanagement.updateSuccess'),
+            'data' => $user
+        ];
 
-        return back()->with('success', trans('usersmanagement.updateSuccess'));
+        return response()->json($data);
     }
 
     /**
@@ -230,6 +260,7 @@ class UsersManagementController extends Controller
      */
     public function destroy($id)
     {
+        $error = 1;
         $currentUser = Auth::user();
         $user = User::findOrFail($id);
         $ipAddress = new CaptureIpTrait();
@@ -238,11 +269,20 @@ class UsersManagementController extends Controller
             $user->deleted_ip_address = $ipAddress->getClientIp();
             $user->save();
             $user->delete();
+            $error = 0;
+            $data = [
+                'error' => $error,
+                'message' => trans('usersmanagement.deleteSuccess')
+            ];
 
-            return redirect('users')->with('success', trans('usersmanagement.deleteSuccess'));
+            return response()->json($data);
         }
+        $data = [
+            'error' => $error,
+            'message' => trans('usersmanagement.deleteSelfError')
+        ];
 
-        return back()->with('error', trans('usersmanagement.deleteSelfError'));
+        return response()->json($data);
     }
 
     /**
@@ -284,8 +324,6 @@ class UsersManagementController extends Controller
             $result->push($roles);
         }
 
-        return response()->json([
-            json_encode($results),
-        ], Response::HTTP_OK);
+        return response()->json($results, Response::HTTP_OK);
     }
 }

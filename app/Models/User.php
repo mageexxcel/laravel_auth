@@ -58,7 +58,7 @@ class User extends Authenticatable
         'password',
         'remember_token',
         'activated',
-        'token',
+        // 'token',
     ];
 
     protected $dates = [

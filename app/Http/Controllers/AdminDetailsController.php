@@ -39,8 +39,12 @@ class AdminDetailsController extends Controller
      */
     public function activeUsers()
     {
+        $error = 0;
         $users = User::count();
-
-        return view('pages.admin.active-users', ['users' => $users]);
+        $data = [
+            'error' => $error,
+            'count' => $users
+        ];
+        return response()->json($data);
     }
 }
